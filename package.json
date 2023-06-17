@@ -1,0 +1,30 @@
+{
+  "name": "builder-events",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup --config --watch",
+    "babel": "babel dest/bundle.js -d build --watch",
+    "dev": "concurrently --kill-others \"tsc --watch\" \"yarn build\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aureliocampos/builder-events.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aureliocampos/builder-events/issues"
+  },
+  "homepage": "https://github.com/aureliocampos/builder-events#readme",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "concurrently": "^8.2.0",
+    "rollup": "^3.25.1",
+    "typescript": "^5.1.3"
+  }
+}
