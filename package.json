@@ -6,8 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rollup --config --watch",
-    "babel": "babel dest/bundle.js -d build --watch",
-    "dev": "concurrently --kill-others \"tsc --watch\" \"yarn build\""
+    "babel": "babel dist/bundle.js -d build --watch",
+    "dev": "tsc && concurrently --kill-others \"tsc --watch\" \"yarn build\""
   },
   "repository": {
     "type": "git",

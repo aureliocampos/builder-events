@@ -1,7 +1,7 @@
 export default {
-  input: "dest/index.js",
+  input: "dist/prebuild/index.js",
   output: {
-    file: "dest/bundle.js",
+    file: "dist/gtm-bundle.js",
     format: "cjs",
   },
 };
