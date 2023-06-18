@@ -1,4 +1,4 @@
-import { IPromotion } from "../interfaces/Promotion";
+import { IPromotion } from "../interfaces/index";
 import { formatText } from "../utils/utils";
 
 interface Options {

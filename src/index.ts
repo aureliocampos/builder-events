@@ -47,18 +47,34 @@ setTimeout(() => {
 
   const view_promotion = new EventViewPromotion(viewPromotionItems);
   view_promotion.pushEvent();
-
-  console.log();
 }, 3000);
 
 /**
+ *  // Criando evento View_Promotion
  *  const fullBannerPromotions = new BuilderPromotion(options)
- *  const DataViewPromotion = new BuilderViewPromotion()
  *
- *  DataViewPromotion.pushDatalayer()
- *  DataViewPromotion.setDatalayer(fullBannerPromotions.items)
- *  DataViewPromotion.getDatalayer()
+ *  const builder = new BuilderEvent()
+ *
+ *  const viewPromotion = builder.viewPromotion(fullBannerPromotions.items)
+ *
+ *  viewPromotion.pushDatalayer()
+ *  viewPromotion.resetDatalayer()
+ *
+ *  viewPromotion.setDatalayer(fullBannerPromotions.items)
+ *  viewPromotion.getDatalayer()
+ *
+ *  viewPromotion.setDatalayerItems()
+ *  viewPromotion.getDatalayerItems()
+ *
+ *  viewPromotion.getAllPromotions()
+ *
+ *  // Criando Evento Select_Promotion
+ *  const selectPromotion = builder.selectPromotion(viewPromotion.getAllPromotions())
  *
  *
- *
+ * selectPromotion.forEach( promotion => {
+ *  promotion.addEventListener(item => {
+ *    item.pushDataLayer(item)
+ *  })
+ * })
  */

@@ -1,8 +1,7 @@
-import { Promotion } from "../components/Promotion";
-import { IPromotion } from "../interfaces/Promotion";
+import { IPromotion } from "../interfaces/index";
 
 export class EventViewPromotion {
-  items;
+  public items: IPromotion[] = [];
 
   constructor(items: IPromotion[]) {
     this.items = items;
