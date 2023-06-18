@@ -1,9 +1,9 @@
-import { Promotion } from "./Promotion";
+import { IPromotion } from "./Promotion";
 
-export interface ViewPromotion {
+export interface Promotions {
   creative_name: string;
   creative_slot: string;
   promotion_id: string;
   promotion_name: string;
-  items: Array<Promotion>;
+  items: Array<IPromotion>;
 }
