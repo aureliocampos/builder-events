@@ -1,8 +1,12 @@
 import "./proxy/index.js";
 
 import { Promotion } from "./components/Promotion";
-import ViewPromotion from "./events/ViewPromotion";
+import { EventViewPromotion } from "./events/ViewPromotion";
 
+/**
+ *  Init App
+ *
+ */
 window.dataLayer = window.dataLayer || [];
 
 setTimeout(() => {
@@ -35,11 +39,26 @@ setTimeout(() => {
   const bannerBottom = new Promotion(optionsBannerBottom);
 
   const viewPromotionItems = [
-    fullBanner.promotion,
-    bannerTop.promotion,
-    bannerCenter.promotion,
-    bannerBottom.promotion,
+    ...fullBanner.promotion,
+    ...bannerTop.promotion,
+    ...bannerCenter.promotion,
+    ...bannerBottom.promotion,
   ];
 
-  ViewPromotion(viewPromotionItems);
+  const view_promotion = new EventViewPromotion(viewPromotionItems);
+  view_promotion.pushEvent();
+
+  console.log();
 }, 3000);
+
+/**
+ *  const fullBannerPromotions = new BuilderPromotion(options)
+ *  const DataViewPromotion = new BuilderViewPromotion()
+ *
+ *  DataViewPromotion.pushDatalayer()
+ *  DataViewPromotion.setDatalayer(fullBannerPromotions.items)
+ *  DataViewPromotion.getDatalayer()
+ *
+ *
+ *
+ */
