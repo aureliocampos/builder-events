@@ -1,7 +1,7 @@
 import "./proxy/index.js";
 
-import { Promotion } from "./components/Promotion";
-import { EventViewPromotion } from "./events/ViewPromotion";
+import { Promotion } from "./builder/elements/Promotion";
+import { BuilderEventsDataLayer } from "./builder/BuilderEventsDataLayer";
 
 /**
  *  Init App
@@ -10,71 +10,69 @@ import { EventViewPromotion } from "./events/ViewPromotion";
 window.dataLayer = window.dataLayer || [];
 
 setTimeout(() => {
-  const optionsFullBanner = {
+  const sitePromotionConfig = [];
+  const fullBanner = new Promotion({
     promotionName: "full_banner",
     container: "#home_full_banners .slick-track",
     excludeClassItem: "slick-cloned",
     itemTextSelector: "img",
-  };
-  const optionsBannerTop = {
+  });
+  const bannerTop = new Promotion({
     promotionName: "banner_tarja_topo",
     container: ".highlights-copy .highlights-section-container",
     itemTextSelector: "a",
-  };
-  const optionsBannerBottom = {
-    promotionName: "banner_tarja_topo",
-    container:
-      ".main-section + .highlights-section .highlights-section-container",
-    itemTextSelector: "a",
-  };
-  const optionsBannerCenter = {
+  });
+  const bannerCenter = new Promotion({
     promotionName: "banner_central",
     container: ".mini-banners-home-middle .column",
     itemTextSelector: "img",
-  };
-
-  const fullBanner = new Promotion(optionsFullBanner);
-  const bannerTop = new Promotion(optionsBannerTop);
-  const bannerCenter = new Promotion(optionsBannerCenter);
-  const bannerBottom = new Promotion(optionsBannerBottom);
+  });
+  const bannerBottom = new Promotion({
+    promotionName: "banner_tarja_rodape",
+    container:
+      ".main-section + .highlights-section .highlights-section-container",
+    itemTextSelector: "a",
+  });
 
   const viewPromotionItems = [
-    ...fullBanner.promotion,
-    ...bannerTop.promotion,
-    ...bannerCenter.promotion,
-    ...bannerBottom.promotion,
+    ...fullBanner.getAllPromotions(),
+    ...bannerTop.getAllPromotions(),
+    ...bannerCenter.getAllPromotions(),
+    ...bannerBottom.getAllPromotions(),
   ];
 
-  const view_promotion = new EventViewPromotion(viewPromotionItems);
-  view_promotion.pushEvent();
+  const builder = new BuilderEventsDataLayer();
+
+  const eventViewPromotion = builder.viewPromotion(viewPromotionItems);
+  const eventSelectPromotion = builder.selectPromotion();
+
+  eventViewPromotion.pushEventDataLayer();
+  eventSelectPromotion.selectEventListener(viewPromotionItems);
 }, 3000);
 
 /**
- *  // Criando evento View_Promotion
- *  const fullBannerPromotions = new BuilderPromotion(options)
+ * Class mais Abtrasta com metodos em comum com todas as classes de item
+ * Lista de métodos comuns entre todos os items
  *
- *  const builder = new BuilderEvent()
+ *  method.pushDatalayer()
+ *  method.resetDatalayer()
  *
- *  const viewPromotion = builder.viewPromotion(fullBannerPromotions.items)
+ *  method.setDatalayer(items)
+ *  method.getDatalayer()
  *
- *  viewPromotion.pushDatalayer()
- *  viewPromotion.resetDatalayer()
+ *  method.setDatalayerItems(items)
+ *  method.getDatalayerItems()
  *
- *  viewPromotion.setDatalayer(fullBannerPromotions.items)
- *  viewPromotion.getDatalayer()
- *
- *  viewPromotion.setDatalayerItems()
- *  viewPromotion.getDatalayerItems()
- *
- *  viewPromotion.getAllPromotions()
- *
- *  // Criando Evento Select_Promotion
- *  const selectPromotion = builder.selectPromotion(viewPromotion.getAllPromotions())
+ *  method.getAllItems()
+ *  method.getAllItemsWithID()
  *
  *
- * selectPromotion.forEach( promotion => {
- *  promotion.addEventListener(item => {
- *    item.pushDataLayer(item)
- *  })
- * })
+ * Class especifica de Item
+ * * Percorra a DOM para obter os elementos relevantes
+ * * formate esses elementos para o formato válido de items do evento
+ * * Adcione marcadores únicos para obter no futuro e um função que lide com o estado deles se já foi clicado ou não
+ * * retorne esses items
+ *
+ *
+ *
  */
