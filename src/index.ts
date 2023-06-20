@@ -160,9 +160,11 @@ class ViewPromotionBuilder {
 
 class SelectPromotionBuilder {
   private items: IPromotion[];
+  allPromotions: IPromotion[];
 
-  constructor() {
+  constructor(allPromotions: IPromotion[]) {
     this.items = [];
+    this.allPromotions = [];
   }
 
   /**
@@ -178,14 +180,14 @@ class SelectPromotionBuilder {
     });
   }
 
-  public handleLinkClicked(link: Element, allPromotions: IPromotion[]) {
+  public handleElementClicked(link: Element) {
     if (link.classList.contains("ga-element-clicked")) {
       return;
     }
 
     link.classList.add("ga-element-clicked");
 
-    const item_select = allPromotions.filter(
+    const item_select = this.allPromotions.filter(
       (item) => item.localtion_id === link.getAttribute("ga-element-id")
     );
 
@@ -231,18 +233,21 @@ setTimeout(() => {
     return new PromotionListFactory(config).getAllPromotions();
   });
   const allPromotions = createPromotions.flatMap((promotions) => promotions);
-  const viewPromotion = new ViewPromotionBuilder(allPromotions);
-  gtmDataLayer.pushEvent(viewPromotion.pushDataLayer());
+  const view_promotion = new ViewPromotionBuilder(allPromotions);
+  gtmDataLayer.pushEvent(view_promotion.pushDataLayer());
 
   // select_item
   const gaLinks = document.querySelectorAll("[ga-element-link]");
+
   gaLinks.forEach((link) => {
-    const selectEvent = new SelectPromotionBuilder();
+    const select_promotion = new SelectPromotionBuilder(allPromotions);
 
     link.addEventListener("click", () => {
-      if (selectEvent.handleLinkClicked(link, allPromotions)?.length) {
-        gtmDataLayer.pushEvent(selectEvent.pushDataLayer());
+      if (select_promotion.handleElementClicked(link)?.length) {
+        gtmDataLayer.pushEvent(select_promotion.pushDataLayer());
       }
     });
   });
+
+  //
 }, 3000);
