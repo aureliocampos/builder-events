@@ -164,7 +164,7 @@ class SelectPromotionBuilder {
 
   constructor(allPromotions: IPromotion[]) {
     this.items = [];
-    this.allPromotions = [];
+    this.allPromotions = allPromotions;
   }
 
   /**
