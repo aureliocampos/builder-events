@@ -1,5 +1,9 @@
 import "./proxy/index.js";
-import { formatText } from "./utils/utils.js";
+import { formatText } from "./utils/utils";
+
+import { PromotionListFactory } from "./constructor/PromotionListFactory";
+import { ViewPromotionBuilder } from "./event/ViewPromotionBuilder";
+import { SelectPromotionBuilder } from "./event/SelectPromotionBuilder";
 
 window.dataLayer = window.dataLayer || [];
 
@@ -9,194 +13,15 @@ const gtmDataLayer = {
   },
 };
 
-interface IOptions {
-  creativeSlot: string;
-  container: HTMLElement;
-  classFilter?: string;
-  promotionNameSelector: string;
-}
-interface IPromotion {
-  promotion_id: string;
-  promotion_name: string;
-  creative_name: string;
-  creative_slot: string;
-  localtion_id: string;
-}
-interface IPromotionConfig {
-  index: number;
-  element: Element;
-  selectorName: string;
-  creativeSlot: string;
-}
-
-class PromotionListFactory {
-  public creativeSlot: string;
-
-  private container: HTMLElement;
-  private classFilter?: string;
-  private promotionNameSelector: string;
-
-  constructor(options: IOptions) {
-    this.container = options.container;
-    this.creativeSlot = options.creativeSlot;
-    this.classFilter = options.classFilter;
-    this.promotionNameSelector = options.promotionNameSelector;
-  }
-
-  /**
-   * getAllPromotions
-   */
-  public getAllPromotions() {
-    if (!this.container) {
-      return [];
-    }
-
-    const childrens = Array.from(this.container.children);
-
-    const allItems = this.classFilter
-      ? this.handleFilterClass(childrens)
-      : childrens;
-
-    return allItems.map((element, index) => {
-      const config = {
-        index,
-        element,
-        selectorName: this.promotionNameSelector,
-        creativeSlot: this.creativeSlot,
-      };
-
-      const newPromotion = new PromotionFactory(config).getItem();
-
-      return newPromotion;
-    });
-  }
-
-  /**
-   * setElementsID
-   */
-  public setElementID() {}
-
-  private handleFilterClass(items: Element[]) {
-    const selectorClass = this.classFilter;
-    let filterItems: Element[] = [];
-
-    if (selectorClass) {
-      filterItems = items.filter(
-        (item) => !item.classList.contains(selectorClass)
-      );
-    }
-
-    return filterItems;
-  }
-}
-class PromotionFactory {
-  private index: number;
-  private element: Element;
-  private selectorName: string;
-  private creativeSlot: string;
-
-  constructor(config: IPromotionConfig) {
-    const { index, element, selectorName, creativeSlot } = config;
-
-    this.index = index;
-    this.element = element;
-    this.selectorName = selectorName;
-    this.creativeSlot = creativeSlot;
-  }
-
-  /**
-   * getPromotion
-   */
-  public getItem() {
-    let element = this.element.querySelector(this.selectorName);
-    let textContent = "";
-    let itemId = `${this.creativeSlot}_${++this.index}`;
-
-    switch (this.selectorName) {
-      case "img":
-        textContent = element?.getAttribute("alt") || "";
-        break;
-      case "a":
-        textContent = element?.getAttribute("title") || "";
-        break;
-    }
-
-    this.element.setAttribute("ga-element-link", formatText(textContent));
-    this.element.setAttribute("ga-element-id", itemId);
-
-    return {
-      promotion_id: formatText(textContent),
-      promotion_name: formatText(textContent),
-      creative_name: formatText(textContent),
-      creative_slot: this.creativeSlot,
-      localtion_id: itemId,
-    };
-  }
-}
-class ViewPromotionBuilder {
-  items: IPromotion[];
-
-  constructor(items: IPromotion[]) {
-    this.items = items;
-  }
-
-  public pushDataLayer(): void {
-    window.dataLayer.push({ ecommerce: null });
-    window.dataLayer.push({
-      event: "view_promotion",
-      ecommerce: {
-        items: [this.items],
-      },
-    });
-  }
-
-  /**
-   * getEventName
-   */
-  public getEventName() {
-    return "view_promotion";
-  }
-}
-
-class SelectPromotionBuilder {
-  private items: IPromotion[];
-  allPromotions: IPromotion[];
-
-  constructor(allPromotions: IPromotion[]) {
-    this.items = [];
-    this.allPromotions = allPromotions;
-  }
-
-  /**
-   * pushDataLayer
-   */
-  public pushDataLayer() {
-    window.dataLayer.push({ ecommerce: null });
-    window.dataLayer.push({
-      event: "select_promotion",
-      ecommerce: {
-        items: this.items,
-      },
-    });
-  }
-
-  public handleElementClicked(link: Element) {
-    if (link.classList.contains("ga-element-clicked")) {
-      return;
-    }
-
-    link.classList.add("ga-element-clicked");
-
-    const item_select = this.allPromotions.filter(
-      (item) => item.localtion_id === link.getAttribute("ga-element-id")
-    );
-
-    return (this.items = item_select);
-  }
-}
+const getStorageJson = (key: string) => {
+  const responseJson = localStorage.getItem(key);
+  return responseJson !== null ? JSON.parse(responseJson) : [];
+};
 
 setTimeout(() => {
-  // view_promotion
+  /**
+   *  Evento GA : view_promotion
+   */
   const configPromotions = [
     {
       creativeSlot: "full_banner",
@@ -228,26 +53,44 @@ setTimeout(() => {
       promotionNameSelector: "a",
     },
   ];
-
   const createPromotions = configPromotions.map((config) => {
     return new PromotionListFactory(config).getAllPromotions();
   });
-  const allPromotions = createPromotions.flatMap((promotions) => promotions);
-  const view_promotion = new ViewPromotionBuilder(allPromotions);
-  gtmDataLayer.pushEvent(view_promotion.pushDataLayer());
+  if (createPromotions.length) {
+    const allPromotions = createPromotions.flatMap((promotions) => promotions);
 
-  // select_item
-  const gaLinks = document.querySelectorAll("[ga-element-link]");
+    localStorage.setItem("ga-promotions-items", JSON.stringify(allPromotions));
 
-  gaLinks.forEach((link) => {
-    const select_promotion = new SelectPromotionBuilder(allPromotions);
+    const view_promotion = new ViewPromotionBuilder(allPromotions);
+    gtmDataLayer.pushEvent(view_promotion.pushDataLayer());
+  }
 
-    link.addEventListener("click", () => {
-      if (select_promotion.handleElementClicked(link)?.length) {
-        gtmDataLayer.pushEvent(select_promotion.pushDataLayer());
-      }
+  /**
+   *  Evento GA : select_item
+   */
+  if (localStorage.getItem("ga-promotions-items")?.length) {
+    const gaLinks = document.querySelectorAll("[ga-promotion-link]");
+
+    const allPromotions = getStorageJson("ga-promotions-items");
+
+    gaLinks.forEach((link) => {
+      const select_promotion = new SelectPromotionBuilder(allPromotions);
+
+      link.addEventListener("click", () => {
+        if (select_promotion.handleElementClicked(link)?.length) {
+          gtmDataLayer.pushEvent(select_promotion.pushDataLayer());
+        }
+      });
     });
-  });
+  }
 
-  //
-}, 3000);
+  /**
+   *  Evento GA : view_item_list
+   */
+
+  const allSection = document.querySelectorAll(
+    ".beon-region, .list-category-products-section"
+  );
+
+  console.log(allSection);
+}, 2000);
