@@ -37,7 +37,7 @@ export class PromotionListFactory {
         creativeSlot: this.creativeSlot,
       };
 
-      const newPromotion = new PromotionFactory(config).getItem();
+      const newPromotion = new PromotionFactory(config).getPromotion();
 
       return newPromotion;
     });

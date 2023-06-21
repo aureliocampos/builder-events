@@ -1,5 +1,5 @@
 import { IPromotionConfig } from "../interface/Promotion";
-import { formatText } from "../utils/utils";
+import { idFormatted } from "../utils/utils";
 
 export class PromotionFactory {
   private index: number;
@@ -19,7 +19,7 @@ export class PromotionFactory {
   /**
    * getPromotion
    */
-  public getItem() {
+  public getPromotion() {
     let element = this.element.querySelector(this.selectorName);
     let textContent = "";
     let itemId = `${this.creativeSlot}_${++this.index}`;
@@ -33,13 +33,13 @@ export class PromotionFactory {
         break;
     }
 
-    this.element.setAttribute("ga-promotion-link", formatText(textContent));
+    this.element.setAttribute("ga-promotion-link", idFormatted(textContent));
     this.element.setAttribute("ga-promotion-id", itemId);
 
     return {
-      promotion_id: formatText(textContent),
-      promotion_name: formatText(textContent),
-      creative_name: formatText(textContent),
+      promotion_id: idFormatted(textContent),
+      promotion_name: textContent,
+      creative_name: idFormatted(textContent),
       creative_slot: this.creativeSlot,
       localtion_id: itemId,
     };
