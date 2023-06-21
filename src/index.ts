@@ -151,46 +151,10 @@ setTimeout(() => {
       // Formatção dos preços com desconto ou sem
 
       const viewItemList = allList.map((list) => {
-        const item_list_name = list?.title as string;
-        const item_list_items = Array.from(list?.allProducts as HTMLCollection);
-
-        if (list?.id === "default") {
-          const productItems = item_list_items.map(
-            // @class ListProducsDefaultFactory
-            (item: Element, index: number) => {
-              const itemName = item?.querySelector(".product-name a")
-                ?.textContent as string;
-
-              const itemPrices = getPrice(item);
-
-              return {
-                affiliation: "Casa Boa Vista",
-                index: ++index,
-                item_id: idFormatted(itemName),
-                item_name: itemName?.trim(),
-                currency: "BRL",
-                discount: itemPrices?.oldPrice !== 0 ? itemPrices?.oldPrice : 0,
-                price:
-                  itemPrices?.oldPrice !== 0
-                    ? itemPrices?.specialPrice
-                    : itemPrices?.regularPrice,
-                item_list_id: idFormatted(item_list_name),
-                item_list_name: item_list_name,
-                quantity: 1,
-                location_id: `${idFormatted(item_list_name)}_${idFormatted(
-                  itemName
-                )}_${index++}`,
-              };
-            }
-            // @class ListProducsDefaultFactory
-          );
-
-          return {
-            item_list_id: idFormatted(item_list_name),
-            item_list_name: item_list_name.trim(),
-            items: productItems,
-          };
-        }
+        const listId = list?.id ?? "";
+        const listName = list?.title ?? "";
+        const listItems = Array.from(list?.allProducts as Element[]);
+        return new ListItemsFactory(listName, listId, listItems).getList();
       });
 
       console.log(viewItemList);
@@ -198,145 +162,184 @@ setTimeout(() => {
   }, 3000);
 }, 2000);
 
-class ItemProducsDefaultFactory {
+interface IPrices {
+  oldPrice: number;
+  specialPrice: number;
+  regularPrice: number;
+}
+
+class ListItemsFactory {
+  public item_list_name: string;
+  public item_list_id: string;
+  public item_list_items: Element[];
+
+  private list_id: string;
+
+  constructor(listName: string, listId: string, listItems: Element[]) {
+    this.item_list_name = listName;
+    this.item_list_id = idFormatted(this.item_list_name);
+    this.list_id = listId;
+    this.item_list_items = listItems;
+  }
+
+  /**
+   * getList
+   */
+  public getList() {
+    return this.listBuilder();
+  }
+
+  private listBuilder() {
+    switch (this.list_id) {
+      case "default":
+        return this.defaultBuilder();
+      case "performa":
+        return this.performaBuilder();
+      default:
+        break;
+    }
+  }
+
+  private defaultBuilder() {
+    const productItems = this.item_list_items.map(
+      (item: Element, index: number) => {
+        const newItem = new DefaultItemFactory(
+          item,
+          index,
+          this.item_list_name
+        );
+
+        return newItem.getItem();
+      }
+    );
+
+    return {
+      item_list_id: idFormatted(this.item_list_name),
+      item_list_name: this.item_list_name.trim(),
+      items: productItems,
+    };
+  }
+
+  private performaBuilder() {
+    const productItems = this.item_list_items.map(
+      (item: Element, index: number) => {
+        const newItem = new PerformaItemFactory(
+          item,
+          index,
+          this.item_list_name
+        );
+
+        return newItem.getItem();
+      }
+    );
+
+    return {
+      item_list_id: idFormatted(this.item_list_name),
+      item_list_name: this.item_list_name.trim(),
+      items: productItems,
+    };
+  }
+}
+
+class PerformaItemFactory {
   private item: Element;
   private index: number;
 
   private item_name: string;
-  private item_price: number;
+  private item_prices: IPrices;
+  private item_list_name: string;
 
-  constructor(item: Element, index: number) {
+  constructor(item: Element, index: number, listName: string) {
     this.item = item;
     this.index = index;
-    this.item_name = this.item.querySelector(".product-name a")
-      ?.textContent as string;
-    this.item_price = getPrice(item);
-  }
-}
-/**
- *  Evento GA : view_item_list Beon
- */
-// setTimeout(() => {
-//   const allSection = document.querySelectorAll(".beon-container");
-//   if (document.querySelectorAll(".beon-container").length > 0) {
-//     const allItems = Array.from(allSection).map((section) => section.children);
+    this.item_list_name = listName;
+    this.item_name =
+      this.item.querySelector(".performa-name-vitrine")?.textContent ?? "";
 
-//     const newList = allItems.map((section) => {
-//       console.log(section);
-
-//       // Inicio da class ListProductsFactory
-//       // const getTitleContent = section
-//       //   .item(0)
-//       //   .querySelector(".beon-showcase__title span")?.textContent;
-
-//       // const getSectionGrid = section
-//       //   .item(0)
-//       //   .querySelector(".beon-slider__slides")?.children;
-
-//       // const sectionTitle = getTitleContent !== "string" ? "" : getTitleContent;
-
-//       // const productsGrid = getSectionGrid ? Array.from(getSectionGrid) : [];
-
-//       // const listConfig = {
-//       //   item_list_name: sectionTitle,
-//       //   item_list_id: idFormatted(sectionTitle),
-//       //   list_item: productsGrid,
-//       // };
-
-//       // // Fim da class ListProductsFactory
-//       // //
-//       // // Inicio da class ProductFactory
-//       // return new BeonListProductsFactory(listConfig).getProduct();
-//     });
-
-//     console.log(newList);
-//   }
-// }, 6000);
-interface IListsProductConfig {
-  item_list_id: string;
-  item_list_name: string;
-  list_item: Element[];
-}
-class BeonListProductsFactory {
-  item_list_id: string;
-  item_list_name: string;
-  list_item: Element[];
-
-  constructor(config: IListsProductConfig) {
-    this.item_list_id = config.item_list_id;
-    this.item_list_name = config.item_list_name;
-    this.list_item = config.list_item;
+    const prices = getPrice(this.item);
+    this.item_prices = {
+      oldPrice: prices?.oldPrice ?? 0,
+      specialPrice: prices?.specialPrice ?? 0,
+      regularPrice: prices?.regularPrice ?? 0,
+    };
   }
 
   /**
-   * getProduct
+   * item
    */
-  public getProduct() {
-    if (this.list_item.length === 0) {
-      console.error("Não existe produtos na lista");
-    }
+  public getItem() {
+    const location = `${idFormatted(this.item_list_name)}_${idFormatted(
+      this.item_name
+    )}_${this.index++}`;
 
-    const listFormatted = this.list_item.map((item: Element, index) => {
-      const selectorProp = (selector: string) => {
-        return item.querySelector(selector);
-      };
+    const priceType =
+      this.item_prices.oldPrice === 0
+        ? this.item_prices.regularPrice
+        : this.item_prices.specialPrice;
 
-      const itemName = () => {
-        const getName = selectorProp(".product-name a")!.textContent?.trim();
-
-        return getName !== undefined ? getName : "";
-      };
-
-      const itemPrice = () => {
-        const getPrice = selectorProp(".special-price .price")
-          ?.textContent?.trim()
-          .replace("R$", "")
-          .replace(",", ".");
-
-        return getPrice !== undefined ? Number(getPrice) : 0;
-      };
-
-      return {
-        item_id: idFormatted(itemName()),
-        item_name: itemName(),
-        item_list_id: this.item_list_id,
-        item_list_name: this.item_list_name,
-        location_id: `${idFormatted(itemName())}_${index++}`,
-        price: itemPrice(),
-        quantity: 1,
-      };
-    });
-
-    return listFormatted;
+    return {
+      affiliation: "Casa Boa Vista",
+      index: ++this.index,
+      item_id: idFormatted(this.item_name),
+      item_name: this.item_name?.trim(),
+      currency: "BRL",
+      discount: this.item_prices.oldPrice,
+      price: priceType,
+      item_list_id: idFormatted(this.item_list_name),
+      item_list_name: this.item_list_name,
+      quantity: 1,
+      location_id: location,
+    };
   }
 }
+class DefaultItemFactory {
+  private item: Element;
+  private index: number;
 
-// const observer = new MutationObserver((allMutations) => {
-//   const items = allMutations.forEach((mutation) => {
-//     if (mutation.addedNodes.length || mutation.removedNodes.length) {
-//       let grids: any[] = [];
+  private item_name: string;
+  private item_prices: IPrices;
+  private item_list_name: string;
 
-//       const productsGrid = document.querySelectorAll(
-//         ".list-category-products-section"
-//       );
+  constructor(item: Element, index: number, listName: string) {
+    this.item = item;
+    this.index = index;
+    this.item_list_name = listName;
+    this.item_name =
+      this.item.querySelector(".product-name a")?.textContent ?? "";
 
-//       const performaGrid = document.querySelectorAll(".performa-vitrine");
+    const prices = getPrice(this.item);
+    this.item_prices = {
+      oldPrice: prices?.oldPrice ?? 0,
+      specialPrice: prices?.specialPrice ?? 0,
+      regularPrice: prices?.regularPrice ?? 0,
+    };
+  }
 
-//       if (performaGrid.length > 0 && productsGrid.length > 0) {
-//         const gridsGroup = [Array.from(performaGrid), Array.from(productsGrid)];
-//         const allGrids = gridsGroup.flatMap((grid) => grid);
+  /**
+   * item
+   */
+  public getItem() {
+    const location = `${idFormatted(this.item_list_name)}_${idFormatted(
+      this.item_name
+    )}_${this.index++}`;
 
-//         grids = allGrids;
-//       }
-//       return grids;
-//     }
-//   });
-//   console.log(items);
-// });
+    const priceType =
+      this.item_prices.oldPrice === 0
+        ? this.item_prices.regularPrice
+        : this.item_prices.specialPrice;
 
-// const options = {
-//   childList: true,
-//   subtree: true,
-// };
-
-// observer.observe(document.documentElement, options);
+    return {
+      affiliation: "Casa Boa Vista",
+      index: ++this.index,
+      item_id: idFormatted(this.item_name),
+      item_name: this.item_name?.trim(),
+      currency: "BRL",
+      discount: this.item_prices.oldPrice,
+      price: priceType,
+      item_list_id: idFormatted(this.item_list_name),
+      item_list_name: this.item_list_name,
+      quantity: 1,
+      location_id: location,
+    };
+  }
+}
