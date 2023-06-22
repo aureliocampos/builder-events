@@ -5,6 +5,7 @@ export class PerformaItemFactory {
   private item: Element;
   private index: number;
 
+  private item_id: string;
   private item_name: string;
   private item_prices: IPrices;
   private item_list_name: string;
@@ -15,6 +16,7 @@ export class PerformaItemFactory {
     this.item_list_name = listName;
     this.item_name =
       this.item.querySelector(".performa-name-vitrine")?.textContent ?? "";
+    this.item_id = item.getAttribute("data-id") ?? "";
 
     const prices = getPricePerforma(this.item);
     this.item_prices = {
@@ -37,10 +39,14 @@ export class PerformaItemFactory {
         ? this.item_prices.regularPrice
         : this.item_prices.specialPrice;
 
+    this.item.setAttribute("ga-item-link", formatId(this.item_name));
+    this.item.setAttribute("ga-item-link-id", formatId(this.item_id));
+    // this.item.setAttribute("ga-promotion-id", itemId);
+
     return {
       affiliation: "Casa Boa Vista",
       index: ++this.index,
-      item_id: formatId(this.item_name),
+      item_id: this.item_id,
       item_name: this.item_name?.trim(),
       currency: "BRL",
       discount: this.item_prices.oldPrice,
@@ -56,6 +62,7 @@ export class DefaultItemFactory {
   private item: Element;
   private index: number;
 
+  private item_id: string;
   private item_name: string;
   private item_prices: IPrices;
   private item_list_name: string;
@@ -64,8 +71,8 @@ export class DefaultItemFactory {
     this.item = item;
     this.index = index;
     this.item_list_name = listName;
-    this.item_name =
-      this.item.querySelector(".product-name a")?.textContent ?? "";
+    this.item_name = this.getName(this.item);
+    this.item_id = item.getAttribute("data-product-id") ?? "";
 
     const prices = getPriceDefault(this.item);
     this.item_prices = {
@@ -88,10 +95,13 @@ export class DefaultItemFactory {
         ? this.item_prices.regularPrice
         : this.item_prices.specialPrice;
 
+    this.item.setAttribute("ga-item-link", formatId(this.item_name));
+    this.item.setAttribute("ga-item-link-id", formatId(this.item_id));
+
     return {
       affiliation: "Casa Boa Vista",
       index: ++this.index,
-      item_id: formatId(this.item_name),
+      item_id: this.item_id,
       item_name: this.item_name?.trim(),
       currency: "BRL",
       discount: this.item_prices.oldPrice,
@@ -101,5 +111,8 @@ export class DefaultItemFactory {
       quantity: 1,
       location_id: location,
     };
+  }
+  private getName(item: Element) {
+    return item.querySelector(".product-name a")?.textContent ?? "";
   }
 }

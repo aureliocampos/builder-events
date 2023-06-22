@@ -145,3 +145,16 @@ export const getPricePerforma = (item: Element) => {
     };
   }
 };
+
+export const getStorageJson = (key: string): [] => {
+  const responseJson = localStorage.getItem(key);
+  return responseJson !== null ? JSON.parse(responseJson) : [];
+};
+
+export const setStorageJson = (key: string, value: string | []) => {
+  if (typeof value !== "string") {
+    return localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  return localStorage.setItem(key, value);
+};
