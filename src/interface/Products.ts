@@ -1,3 +1,15 @@
+export interface IConfigSection {
+  id: string;
+  section: Element;
+  selectorTitle: string;
+  selectorGrid: string;
+}
+
+export interface IPrices {
+  oldPrice: number;
+  specialPrice: number;
+  regularPrice: number;
+}
 export interface IProduct {
   item_id: string;
   item_name: string;

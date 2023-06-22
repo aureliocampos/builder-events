@@ -1,4 +1,6 @@
-export const idFormatted = (text: string) => {
+import { IConfigSection } from "../interface/Products";
+
+export const formatId = (text: string) => {
   if (typeof text !== "string") {
     console.error(`Não foi possível formatar o ${text}`);
   }
@@ -11,13 +13,61 @@ export const idFormatted = (text: string) => {
     .toLocaleLowerCase();
 };
 
-export const priceFormatted = (item: Element) => {
+export const formatPrice = (item: Element) => {
   const value = item?.textContent !== null ? item?.textContent : "";
 
   return Number(value.trim().replace("R$", "").replace(",", "."));
 };
 
-export const getPrice = (item: Element) => {
+export const formatList = (config: IConfigSection) => {
+  const { id, section, selectorTitle, selectorGrid } = config;
+
+  const sectionTitle = section.querySelector(selectorTitle)?.textContent;
+  const productsItems = section.querySelector(selectorGrid)?.children;
+
+  return {
+    id,
+    title: sectionTitle !== undefined ? sectionTitle : "",
+    allProducts: productsItems !== undefined ? productsItems : [],
+  };
+};
+
+export const getListType = (section: Element) => {
+  /** Class ProductsListFactory(section) */
+  if (section.classList.contains("default-section")) {
+    const config = {
+      id: "default",
+      section: section,
+      selectorTitle: ".title",
+      selectorGrid: ".products-grid",
+    };
+
+    return formatList(config);
+  }
+  if (section.classList.contains("performa-vitrine")) {
+    const config = {
+      id: "performa",
+      section: section,
+      selectorTitle: ".performa-vitrine-title span",
+      selectorGrid: ".performa-vitrine-ul",
+    };
+
+    return formatList(config);
+  }
+
+  if (section.querySelector(".category-products")) {
+    const config = {
+      id: "category",
+      section: section,
+      selectorTitle: ".catalog-category-banner-section-container > h1",
+      selectorGrid: ".products-grid",
+    };
+
+    return formatList(config);
+  }
+};
+
+export const getPriceDefault = (item: Element) => {
   const prices = item.querySelector(".price-box")?.children;
 
   let oldPrice = 0;
@@ -29,8 +79,8 @@ export const getPrice = (item: Element) => {
     const selectorSpecialPrice = prices.item(1)?.querySelector(".price");
 
     if (selectorSpecialPrice && selectorOldPrice) {
-      oldPrice = priceFormatted(selectorOldPrice);
-      specialPrice = priceFormatted(selectorSpecialPrice);
+      oldPrice = formatPrice(selectorOldPrice);
+      specialPrice = formatPrice(selectorSpecialPrice);
     }
 
     return {
@@ -44,7 +94,48 @@ export const getPrice = (item: Element) => {
     const selectorRegularPrice = prices.item(0)?.querySelector(".price");
 
     if (selectorRegularPrice) {
-      regularPrice = priceFormatted(selectorRegularPrice);
+      regularPrice = formatPrice(selectorRegularPrice);
+    }
+
+    return {
+      oldPrice,
+      specialPrice,
+      regularPrice: Number(regularPrice.toFixed(2)),
+    };
+  }
+};
+
+export const getPricePerforma = (item: Element) => {
+  const prices = item.querySelector(".performa-details-vitrine")?.children;
+
+  let oldPrice = 0;
+  let specialPrice = 0;
+  let regularPrice = 0;
+
+  if (prices?.item(1)?.classList.contains("performa-price-vitrine")) {
+    const selectorOldPrice = prices.item(1);
+
+    const selectorSpecialPrice = prices
+      .item(2)
+      ?.querySelector(".performa-list-price-vitrine strong");
+
+    if (selectorSpecialPrice && selectorOldPrice) {
+      oldPrice = formatPrice(selectorOldPrice);
+      specialPrice = formatPrice(selectorSpecialPrice);
+    }
+
+    return {
+      oldPrice: Number((oldPrice - specialPrice).toFixed(2)),
+      specialPrice: Number(specialPrice.toFixed(2)),
+      regularPrice,
+    };
+  }
+
+  if (prices?.item(1)?.classList.contains("performa-list-price-vitrine")) {
+    const selectorRegularPrice = prices.item(1)?.querySelector("strong");
+
+    if (selectorRegularPrice) {
+      regularPrice = formatPrice(selectorRegularPrice);
     }
 
     return {
