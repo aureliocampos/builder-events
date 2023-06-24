@@ -14,9 +14,14 @@ export const formatId = (text: string) => {
 };
 
 export const formatPrice = (item: Element) => {
-  const value = item?.textContent !== null ? item?.textContent : "";
+  const getValue = item?.textContent !== null ? item?.textContent : "";
+  const clearValue = getValue.trim().replace("R$", "");
 
-  return Number(value.trim().replace("R$", "").replace(",", "."));
+  if (clearValue.length >= 8) {
+    return Number(clearValue.replace(".", "").replace(",", "."));
+  }
+
+  return Number(clearValue.replace(",", "."));
 };
 
 export const formatList = (config: IConfigSection) => {

@@ -20,6 +20,8 @@ import { ViewItemListBuilder } from "./event/ViewItemListBuilder";
 import { SelectItemBuilder } from "./event/SelectItemBuilder";
 import { IProduct } from "./interface/Products.js";
 import { json } from "stream/consumers";
+import { ok } from "assert";
+import { error } from "console";
 
 window.dataLayer = window.dataLayer || [];
 
@@ -32,15 +34,13 @@ if (isGaPreCheckout?.length) {
   window.ga_pre_checkout = [];
 }
 
-// console.log(isGaSelectItem);
-// console.log(isGaPreCheckout);
-
 if (isGaSelectItem?.length) {
   window.ga_select_item = JSON.parse(isGaSelectItem ?? "");
 } else {
   window.ga_select_item = [];
 }
 
+const allPreCheckotItems: IProduct[] = window.ga_pre_checkout;
 const gtmDataLayer = {
   pushEvent: function (callback: any) {
     callback;
@@ -194,8 +194,6 @@ setTimeout(() => {
           (select: IProduct) => select.item_name === productName
         );
 
-        console.log(currentProduct);
-
         window.dataLayer.push({ ecommerce: null });
         window.dataLayer.push({
           event: "view_item",
@@ -240,7 +238,7 @@ setTimeout(() => {
           window.ga_pre_checkout.push(updateProduct[0]);
           setStorageJson("ga-pre-checkout", window.ga_pre_checkout as []);
 
-          // Envia o evento
+          // Envia o evento add_to_cart
           window.dataLayer.push({ ecommerce: null });
           window.dataLayer.push({
             event: "add_to_cart",
@@ -252,16 +250,114 @@ setTimeout(() => {
       }
     }
   }, 3000);
-}, 2000);
 
-/**
- *
- * View_cart
- *  percorrer o ga-select-item e verificar se o item existe no carrinho se sim retornar o objeto, se não pula pro próximo
- *  Verificar se o item está duplciados no ga-select-item se sim concatenar em 1 só e atualizar para os valores e quantidades que estão no carrinho
- *  por fim criar um objeto begin_checkout com os items do carrinho certo
- *
- * remove_from_cart
- * add_to_cart
- *
- */
+  /**
+   *  Evento GA: view_cart
+   */
+  if (document.body.classList.contains("checkout-cart-index")) {
+    const tableItems = Array.from(
+      document.querySelectorAll("#shopping-cart-table tbody tr")
+    );
+
+    const getCartItems = tableItems.map((itemCart) => {
+      const itemName =
+        itemCart.querySelector(".product-name a")?.textContent ?? "";
+      const itemPriceTotal = itemCart.querySelector(
+        ".product-cart-total .price"
+      )!;
+      const itemQuantity =
+        (itemCart.querySelector("input.qty") as HTMLInputElement).value ?? "";
+
+      return {
+        item_name: itemName,
+        price: formatPrice(itemPriceTotal),
+        quantity: Number(itemQuantity),
+      };
+    });
+
+    interface Item {
+      item_id: string;
+      item_name: string;
+      price: number;
+      quantity: number;
+    }
+
+    interface MergedItem extends Item {
+      affiliation: string;
+      index: number;
+      currency: string;
+      discount: number;
+      item_list_id: string;
+      item_list_name: string;
+      location_id: string;
+      updated: boolean;
+    }
+
+    const mergeItems = (array1: Item[], array2: MergedItem[]): MergedItem[] => {
+      for (const item1 of array1) {
+        const item2 = array2.find((item) => item.item_name === item1.item_name);
+
+        if (item2 && !item2.updated) {
+          item2.price = item1.price;
+          item2.quantity = item1.quantity;
+          item2.updated = true;
+        }
+      }
+      return array2;
+    };
+
+    const mergedAllItems = mergeItems(
+      getCartItems as Item[],
+      allPreCheckotItems as MergedItem[]
+    );
+
+    const updateItems = (array: MergedItem[]): IProduct[] => {
+      const updatedItems: IProduct[] = array.filter((item) => {
+        if (item.updated) {
+          // @ts-expect-error Aqui vai ocorrer um erro, mas estou ignorando
+          delete item.updated;
+
+          return item;
+        }
+      });
+
+      return updatedItems.filter((item) => item !== null);
+    };
+
+    // window.ga_pre_checkout = updateItems(mergedAllItems);
+
+    // setStorageJson("ga-pre-checkout", window.ga_pre_checkout as []);
+
+    // const view_cart = () => {
+    //   const mergeItems = updateItems(mergedAllItems);
+    //   const dataCart = window.dataLayer[1]["cart"];
+
+    //   const isOk = dataCart.map((item) => {
+    //     if (item.name) {
+    //     }
+    //   });
+    // };
+
+    // const cartTotal = view_cart_items.reduce((acc: number, item: IProduct) => {
+    //   return acc + item.price;
+    // }, 0);
+
+    // console.log(cartTotal);
+
+    // const event_view_cart = {
+    //   pushDataLayer: () => {
+    //     window.dataLayer.push({ ecommerce: null });
+    //     window.dataLayer.push({
+    //       event: "view_cart",
+    //       ecommerce: {
+    //         currency: "BRL",
+    //         value: view_cart.total,
+    //         items: [view_cart.items],
+    //       },
+    //     });
+    //   },
+    // };
+
+    // gtmDataLayer.pushEvent(event_view_cart.pushDataLayer());
+  }
+}, 2000);
