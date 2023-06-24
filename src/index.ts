@@ -1,363 +1,424 @@
 import "./proxy/index.js";
+import { formatId, formatPrice } from "./utils/utils.js";
 
-import {
-  formatId,
-  formatList,
-  getListType,
-  formatPrice,
-  getStorageJson,
-  setStorageJson,
-  getPriceDefault,
-} from "./utils/utils";
-// import { IProduct } from "./interface/Products";
+/**
+ * Verifica se os itens do array1 existem no array2 e realiza a mesclagem das informações.
+ * Substitui as propriedades "price" e "quantity" do objeto do array2 pelo objeto do array1, se o item existir.
+ * @param config Array de objetos
+ * @returns Array2 com as informações atualizadas
+ */
 
-import { PromotionListFactory } from "./constructor/PromotionListFactory";
-import { ListItemsFactory } from "./constructor/ListItemsFactory";
-
-import { ViewPromotionBuilder } from "./event/ViewPromotionBuilder";
-import { SelectPromotionBuilder } from "./event/SelectPromotionBuilder";
-import { ViewItemListBuilder } from "./event/ViewItemListBuilder";
-import { SelectItemBuilder } from "./event/SelectItemBuilder";
-import { IProduct } from "./interface/Products.js";
-import { json } from "stream/consumers";
-import { ok } from "assert";
-import { error } from "console";
-
-window.dataLayer = window.dataLayer || [];
-
-const isGaSelectItem = localStorage.getItem("ga-select-item");
-const isGaPreCheckout = localStorage.getItem("ga-pre-checkout");
-
-if (isGaPreCheckout?.length) {
-  window.ga_pre_checkout = JSON.parse(isGaPreCheckout ?? "");
-} else {
-  window.ga_pre_checkout = [];
-}
-
-if (isGaSelectItem?.length) {
-  window.ga_select_item = JSON.parse(isGaSelectItem ?? "");
-} else {
-  window.ga_select_item = [];
-}
-
-const allPreCheckotItems: IProduct[] = window.ga_pre_checkout;
-const gtmDataLayer = {
-  pushEvent: function (callback: any) {
-    callback;
+const configPromotions = [
+  {
+    config: {
+      name: "banner_full",
+      container: "#home_full_banners",
+      items: {
+        selector: ".slick-slide",
+        content: {
+          selector: "img",
+          tag: "img",
+        },
+      },
+    },
   },
-};
-
-setTimeout(() => {
-  /**
-   *  Evento GA: view_promotion
-   */
-  const configPromotions = [
-    {
-      creativeSlot: "full_banner",
-      container: document.querySelector(
-        "#home_full_banners .slick-track"
-      ) as HTMLElement,
-      classFilter: "slick-cloned",
-      promotionNameSelector: "img",
+  {
+    config: {
+      name: "banner_tarja_topo",
+      container: ".highlights-copy",
+      items: {
+        selector: ".highlight-block",
+        content: {
+          selector: "a",
+          tag: "a",
+        },
+      },
     },
-    {
-      creativeSlot: "banner_tarja_topo",
-      container: document.querySelector(
-        ".highlights-copy .highlights-section-container"
-      ) as HTMLElement,
-      promotionNameSelector: "a",
+  },
+  {
+    config: {
+      name: "banner_central",
+      container: ".mini-banners-home-middle",
+      items: {
+        selector: ".link",
+        content: {
+          selector: ".label",
+          tag: "h3",
+        },
+      },
     },
-    {
-      creativeSlot: "banner_central",
-      container: document.querySelector(
-        ".mini-banners-home-middle .column"
-      ) as HTMLElement,
-      promotionNameSelector: "img",
+  },
+  {
+    config: {
+      name: "banner_tarja_rodape",
+      container: ".main-section + .highlights-section",
+      items: {
+        selector: ".highlight-block",
+        content: {
+          selector: "a",
+          tag: "a",
+        },
+      },
     },
-    {
-      creativeSlot: "banner_tarja_rodape",
-      container: document.querySelector(
-        ".main-section + .highlights-section .highlights-section-container"
-      ) as HTMLElement,
-      promotionNameSelector: "a",
+  },
+];
+
+const configProducts = [
+  {
+    name: "beon_default",
+    config: {
+      allContainers: ".beon-container .beon-showcase",
+      title: {
+        selector: ".beon-showcase__title",
+      },
+      grid: {
+        selector: ".beon-showcase__items-wrapper",
+        items: {
+          selector: ".beon-slider__slide",
+          item: {
+            sku: ".beon-product__sku",
+            name: ".beon-showcase__item-title span",
+            prices: {
+              regularPrice: ".beon-showcase__item-price .value",
+              specialPrice:
+                ".beon-showcase__item-price.beon-showcase__item-price--to .value",
+              oldPrice:
+                ".beon-showcase__item-price.beon-showcase__item-price--from .value",
+            },
+          },
+        },
+      },
     },
-  ];
-  const createPromotions = configPromotions.map((config) => {
-    return new PromotionListFactory(config).getAllPromotions();
-  });
-  if (createPromotions.length) {
-    const allPromotions = createPromotions.flatMap((promotions) => promotions);
+  },
+  {
+    name: "vitrine_default",
+    config: {
+      allContainers: ".main-section.default-section",
+      title: {
+        selector: ".catalog-category-banner-section-container > h1",
+      },
+      grid: {
+        selector: ".category-products .products-grid",
+        items: {
+          selector: ".item",
+          item: {
+            sku: "attr",
+            name: ".product-name",
+            prices: {
+              regularPrice: ".regular-price .price",
+              specialPrice: ".special-price .price",
+              oldPrice: ".old-price .price",
+            },
+          },
+        },
+      },
+    },
+  },
+];
 
-    localStorage.setItem("ga-promotions-items", JSON.stringify(allPromotions));
-
-    const view_promotion = new ViewPromotionBuilder(allPromotions);
-    gtmDataLayer.pushEvent(view_promotion.pushDataLayer());
-  }
-
-  /**
-   *  Evento GA: select_promotion
-   */
-  if (localStorage.getItem("ga-promotions-items")?.length) {
-    const gaLinks = document.querySelectorAll("[ga-promotion-link]");
-
-    const allPromotions = getStorageJson("ga-promotions-items");
-
-    gaLinks.forEach((link) => {
-      const select_promotion = new SelectPromotionBuilder(allPromotions);
-
-      link.addEventListener("click", () => {
-        if (select_promotion.handleElementClicked(link)?.length) {
-          gtmDataLayer.pushEvent(select_promotion.pushDataLayer());
-        }
-      });
-    });
-  }
-
-  /**
-   *  Evento GA: view_item_list e select_item
-   */
-  setTimeout(() => {
-    const createViewItemList = (list: any) => {
-      const listId = list?.id ?? "";
-      const listName = (list?.title ?? "").trim();
-      const listItems = Array.from(list?.allProducts as Element[]);
-
-      return new ListItemsFactory(listName, listId, listItems).getList();
+interface IConfigProduct {
+  allContainers: string;
+  title: {
+    selector: string;
+  };
+  grid: {
+    selector: string;
+    items: {
+      selector: string;
+      item: {
+        sku?: string;
+        name: string;
+        prices: {
+          regularPrice: string;
+          specialPrice: string;
+          oldPrice: string;
+        };
+      };
     };
+  };
+}
+interface IProduct {
+  item_id: string;
+  item_name: string;
+  affiliation?: string;
+  coupon?: string;
+  discount?: number;
+  index: number;
+  item_brand?: string;
+  item_category?: string;
+  item_category2?: string;
+  item_category3?: string;
+  item_category4?: string;
+  item_category5?: string;
+  item_list_id: string;
+  item_list_name: string;
+  item_variant?: string;
+  location_id: string;
+  price: number;
+  quantity: number;
+}
 
-    const listProductSection = document.querySelectorAll(
-      ".list-category-products-section"
+const createPromotions = (config: any) => {
+  const container = document.querySelector(config.container);
+
+  if (container !== null) {
+    const allPromotions = Array.from(
+      container.querySelectorAll(config.items.selector)
     );
-    const listPerformaGrid = document.querySelectorAll(".performa-vitrine");
-    const listCategorySection = document.querySelectorAll(
-      ".catalog-category-view"
-    );
 
-    const groupSelectors =
-      listPerformaGrid.length ||
-      listProductSection.length ||
-      listCategorySection.length;
+    const getInfoItems = allPromotions.map((promotion: any, index: number) => {
+      const { selector } = config.items.content;
 
-    if (groupSelectors) {
-      const allSections = [
-        Array.from(listPerformaGrid),
-        Array.from(listProductSection),
-        Array.from(listCategorySection),
-      ].flatMap((section) => section);
+      const getContentItem = promotion.querySelector(selector);
 
-      const allList = allSections.map((section) => getListType(section));
-      const formattedLists = allList.map((list) => createViewItemList(list));
+      const getName = () => {
+        const checkTag = getContentItem.tagName;
 
-      const createStorageItems = () => {
-        return formattedLists.flatMap((list) => list.items);
+        const handleNameForAttr = (attr: string) => {
+          return getContentItem.getAttribute(attr)
+            ? getContentItem.getAttribute(attr)
+            : `Atributo ${attr} vazio`;
+        };
+
+        switch (checkTag) {
+          case "IMG":
+            return {
+              name: handleNameForAttr("alt"),
+            };
+          case "A":
+            return {
+              name: handleNameForAttr("title"),
+            };
+          default:
+            return {
+              name: getContentItem.textContent,
+            };
+        }
       };
 
-      setStorageJson("ga-view-item-list", createStorageItems() as []);
+      const { name } = getName();
+      const location = `${config.name}_${++index}`;
 
-      formattedLists.forEach((list) => {
-        const view_item_list = new ViewItemListBuilder(list);
-        gtmDataLayer.pushEvent(view_item_list.pushDataLayer());
-      });
-    }
+      promotion.setAttribute("ga-promotion-link", location);
 
-    /**
-     *  Evento GA : select_item
-     */
-    if (getStorageJson("ga-view-item-list")?.length) {
-      const gaLinks = document.querySelectorAll("[ga-item-link]");
-      const storageItems = getStorageJson("ga-view-item-list");
+      return {
+        promotion_name: name,
+        promotion_id: formatId(name),
+        creative_name: formatId(name),
+        creative_slot: config.name,
+        localtion_id: location,
+      };
+    });
 
-      gaLinks.forEach((link) => {
-        link.addEventListener("click", (event) => {
-          const getItem = new SelectItemBuilder(storageItems);
-          const select_item = getItem.handleElementClicked(link) as IProduct[];
+    return {
+      items: getInfoItems,
+    };
+  } else {
+    return `O Container: ${container}, não está disonível na DOM`;
+  }
+};
 
-          if (select_item?.length) {
-            gtmDataLayer.pushEvent(getItem.pushDataLayer());
+const createViewItemList = (config: IConfigProduct) => {
+  const allContainers = Array.from(
+    document.querySelectorAll(config.allContainers)
+  );
+
+  if (allContainers.length) {
+    const allItems = allContainers.map((container) => {
+      const title =
+        container.querySelector(config.title.selector)?.textContent ?? "";
+      const grid = container.querySelector(config.grid.selector) as HTMLElement;
+      const allProductItems =
+        Array.from(grid.querySelectorAll(config.grid.items.selector)) ?? [];
+
+      const getItems = allProductItems.map((product, index) => {
+        const { name, sku, prices } = config.grid.items.item;
+        const getIndex = ++index;
+        const getName = product.querySelector(name)?.textContent ?? "";
+
+        const getID = () => {
+          let id: string;
+
+          if (sku && sku !== "attr") {
+            id = product.querySelector(sku)?.textContent ?? "";
+            return {
+              id: formatId(id),
+            };
           }
-        });
+
+          id = product.getAttribute("data-product-id") ?? "";
+          return {
+            id: formatId(id).split("_")[0],
+          };
+        };
+        const getPrices = () => {
+          const getOldPrice = product.querySelector(prices.oldPrice);
+          const getSpecialPrice = product.querySelector(prices.specialPrice);
+          const getRegularPrice = product.querySelector(prices.regularPrice);
+
+          if (getOldPrice !== null && getSpecialPrice !== null) {
+            const getDiscount = () => {
+              const oldPrice = formatPrice(getOldPrice);
+              const newPrice = formatPrice(getSpecialPrice);
+
+              return Number(oldPrice - newPrice);
+            };
+            return {
+              price: formatPrice(getSpecialPrice),
+              discount: Number(getDiscount().toFixed(2)),
+            };
+          }
+
+          return {
+            price: formatPrice(getRegularPrice as Element),
+            discount: 0,
+          };
+        };
+
+        const { discount, price } = getPrices();
+        const { id } = getID();
+
+        // Criar aqui o marcador de clique do produto, sempre que percorrer um produto
+        //
+        product.setAttribute("ga-product-link", formatId(getName));
+        product.setAttribute("ga-product-id", id);
+
+        return {
+          item_id: id,
+          item_name: getName,
+          index: getIndex,
+          affiliation: "Casa Boa Vista",
+          currency: "BRL",
+          item_list_id: formatId(title),
+          item_list_name: title.trim(),
+          location_id: `${formatId(title)}_${getIndex}`,
+          discount: discount > 0 ? discount : 0,
+          price: price,
+          quantity: 1,
+        };
       });
 
-      /**
-       * Página de Produto
-       * Evento GA: view_item e add_to_cart
+      return {
+        item_list_id: formatId(title),
+        item_list_name: title.trim(),
+        items: [...getItems],
+      };
+    });
+
+    return allItems;
+  }
+};
+
+// Inicio dos eventos DataLayer
+window.addEventListener("DOMContentLoaded", (event) => {
+  if (event.isTrusted === true) {
+    setTimeout(() => {
+      /**=========================
+       * Evento: view_promotion
        */
+      // Percorre todos as configurações de promoção e envia os eventos
 
-      // view_item
-      if (document.body.classList.contains("catalog-product-view")) {
-        const productName =
-          document.querySelector(".product-name h1")?.textContent;
+      window.ga_promotions_item = [];
 
-        let currentProduct: IProduct[];
+      configPromotions.forEach(({ config }) => {
+        const promotion = createPromotions(config);
 
-        currentProduct = getStorageJson("ga-select-item").filter(
-          (select: IProduct) => select.item_name === productName
-        );
+        if (typeof promotion !== "string") {
+          const { items } = promotion;
 
-        window.dataLayer.push({ ecommerce: null });
-        window.dataLayer.push({
-          event: "view_item",
-          ecommerce: {
-            items: [currentProduct[0]],
-          },
-        });
+          window.ga_promotions_item.push(...items);
 
-        // add_to_cart
-        const buttonCart = document.querySelector(
-          ".add-to-cart-buttons .btn-cart"
-        );
-        buttonCart?.addEventListener("click", (event) => {
-          // event.preventDefault();
-          const updateProduct = currentProduct.map(
-            (product: IProduct): IProduct => {
-              const container = document.querySelector(
-                ".product-essential"
-              ) as Element;
-
-              const updateQty = document.querySelector(
-                "input#qty"
-              ) as HTMLInputElement;
-
-              const updatePrice = getPriceDefault(container);
-
-              const newPrice =
-                updatePrice?.oldPrice !== 0
-                  ? updatePrice?.specialPrice
-                  : updatePrice?.regularPrice;
-
-              return {
-                ...product,
-                discount: updatePrice?.oldPrice,
-                price: newPrice ?? 0,
-                quantity: Number(updateQty?.value),
-              };
-            }
+          localStorage.setItem(
+            "ga-promotions-item",
+            JSON.stringify(window.ga_promotions_item)
           );
 
-          // Cria um objeto para verificar futuramente ele está no carrinho e retornar os valores de item_list_name, item_list_id e index
-          window.ga_pre_checkout.push(updateProduct[0]);
-          setStorageJson("ga-pre-checkout", window.ga_pre_checkout as []);
-
-          // Envia o evento add_to_cart
           window.dataLayer.push({ ecommerce: null });
           window.dataLayer.push({
-            event: "add_to_cart",
+            event: "view_promotion",
             ecommerce: {
-              items: [updateProduct[0]],
+              items,
             },
+          });
+        }
+      });
+
+      /**==========================
+       * Evento: select_promotion
+       */
+      if (document.querySelectorAll("[ga-promotion-link]")) {
+        const buttons = document.querySelectorAll("[ga-promotion-link]");
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+
+            const buttonID = button.getAttribute("ga-promotion-link");
+
+            const getPromotionSelect = () => {
+              const getStorage = localStorage.getItem("ga-promotions-item");
+
+              if (getStorage !== null) {
+                const allPromotions = JSON.parse(getStorage);
+
+                return allPromotions.find(
+                  (promotion: any) => promotion.localtion_id === buttonID
+                );
+              }
+            };
+
+            window.dataLayer.push({ ecommerce: null });
+            window.dataLayer.push({
+              event: "select_promotion",
+              ecommerce: {
+                items: getPromotionSelect(),
+              },
+            });
           });
         });
       }
-    }
-  }, 3000);
 
-  /**
-   *  Evento GA: view_cart
-   */
-  if (document.body.classList.contains("checkout-cart-index")) {
-    const tableItems = Array.from(
-      document.querySelectorAll("#shopping-cart-table tbody tr")
-    );
+      /**==========================
+       * Evento: view_item_list
+       */
+      // Outro SetTimeout necessário para aguardar o carregamento da "Beon"
+      setTimeout(() => {
+        // Percorre apenas as configurações das listas "Beon"
+        const allViewItemList = createViewItemList(configProducts[0].config);
 
-    const getCartItems = tableItems.map((itemCart) => {
-      const itemName =
-        itemCart.querySelector(".product-name a")?.textContent ?? "";
-      const itemPriceTotal = itemCart.querySelector(
-        ".product-cart-total .price"
-      )!;
-      const itemQuantity =
-        (itemCart.querySelector("input.qty") as HTMLInputElement).value ?? "";
+        if (allViewItemList?.length) {
+          allViewItemList.forEach(({ item_list_id, item_list_name, items }) => {
+            window.dataLayer.push({ ecommerce: null });
+            window.dataLayer.push({
+              event: "view_item_list",
+              ecommerce: {
+                item_list_id,
+                item_list_name,
+                items,
+              },
+            });
+          });
+        }
+      }, 3500);
 
-      return {
-        item_name: itemName,
-        price: formatPrice(itemPriceTotal),
-        quantity: Number(itemQuantity),
-      };
-    });
+      // Percorre apenas as configurações da lista padrão
+      if (document.body.classList.contains("catalog-category-view")) {
+        const allViewItemList = createViewItemList(configProducts[1].config);
 
-    interface Item {
-      item_id: string;
-      item_name: string;
-      price: number;
-      quantity: number;
-    }
-
-    interface MergedItem extends Item {
-      affiliation: string;
-      index: number;
-      currency: string;
-      discount: number;
-      item_list_id: string;
-      item_list_name: string;
-      location_id: string;
-      updated: boolean;
-    }
-
-    const mergeItems = (array1: Item[], array2: MergedItem[]): MergedItem[] => {
-      for (const item1 of array1) {
-        const item2 = array2.find((item) => item.item_name === item1.item_name);
-
-        if (item2 && !item2.updated) {
-          item2.price = item1.price;
-          item2.quantity = item1.quantity;
-          item2.updated = true;
+        if (allViewItemList?.length) {
+          allViewItemList.forEach(({ item_list_id, item_list_name, items }) => {
+            window.dataLayer.push({ ecommerce: null });
+            window.dataLayer.push({
+              event: "view_item_list",
+              ecommerce: {
+                item_list_id,
+                item_list_name,
+                items,
+              },
+            });
+          });
         }
       }
-      return array2;
-    };
-
-    const mergedAllItems = mergeItems(
-      getCartItems as Item[],
-      allPreCheckotItems as MergedItem[]
-    );
-
-    const updateItems = (array: MergedItem[]): IProduct[] => {
-      const updatedItems: IProduct[] = array.filter((item) => {
-        if (item.updated) {
-          // @ts-expect-error Aqui vai ocorrer um erro, mas estou ignorando
-          delete item.updated;
-
-          return item;
-        }
-      });
-
-      return updatedItems.filter((item) => item !== null);
-    };
-
-    // window.ga_pre_checkout = updateItems(mergedAllItems);
-
-    // setStorageJson("ga-pre-checkout", window.ga_pre_checkout as []);
-
-    // const view_cart = () => {
-    //   const mergeItems = updateItems(mergedAllItems);
-    //   const dataCart = window.dataLayer[1]["cart"];
-
-    //   const isOk = dataCart.map((item) => {
-    //     if (item.name) {
-    //     }
-    //   });
-    // };
-
-    // const cartTotal = view_cart_items.reduce((acc: number, item: IProduct) => {
-    //   return acc + item.price;
-    // }, 0);
-
-    // console.log(cartTotal);
-
-    // const event_view_cart = {
-    //   pushDataLayer: () => {
-    //     window.dataLayer.push({ ecommerce: null });
-    //     window.dataLayer.push({
-    //       event: "view_cart",
-    //       ecommerce: {
-    //         currency: "BRL",
-    //         value: view_cart.total,
-    //         items: [view_cart.items],
-    //       },
-    //     });
-    //   },
-    // };
-
-    // gtmDataLayer.pushEvent(event_view_cart.pushDataLayer());
+    }, 2000);
   }
-}, 2000);
+});

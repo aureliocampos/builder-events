@@ -6,6 +6,7 @@ declare global {
     gtmDataLayer: Record<string, any>;
     ga_pre_checkout: Array<string, any>;
     ga_select_item: Array<string, any>;
+    ga_promotions_item: Array<string, any>;
   }
 }
 

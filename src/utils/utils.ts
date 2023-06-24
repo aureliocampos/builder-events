@@ -1,6 +1,8 @@
 import { IConfigSection } from "../interface/Products";
 
 export const formatId = (text: string) => {
+  // const regex = /(?:\b\s\b|-)|(?:\p{M})|:/gu;
+
   if (typeof text !== "string") {
     console.error(`Não foi possível formatar o ${text}`);
   }
@@ -9,6 +11,7 @@ export const formatId = (text: string) => {
     .replace(/\b(\s)\b|[-]/g, "_")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(":", "")
     .trim()
     .toLocaleLowerCase();
 };
