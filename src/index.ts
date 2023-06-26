@@ -1,3 +1,4 @@
+import { IPromotion } from "./interface/Promotion.js";
 import "./proxy/index.js";
 import { formatId, formatPrice } from "./utils/utils.js";
 
@@ -7,6 +8,40 @@ import { formatId, formatPrice } from "./utils/utils.js";
  * @param config Array de objetos
  * @returns Array2 com as informações atualizadas
  */
+
+// Interfaces
+interface TitleConfig {
+  selector: string;
+}
+
+interface PricesConfig {
+  regularPrice: string;
+  specialPrice: string;
+  oldPrice: string;
+}
+
+interface ItemConfig {
+  sku: string;
+  name: string;
+  prices: PricesConfig;
+}
+
+interface GridConfig {
+  selector: string;
+  items: {
+    selector: string;
+    item: ItemConfig;
+  };
+}
+
+interface ProductConfig {
+  name: string;
+  config: {
+    allContainers: string;
+    title: TitleConfig;
+    grid: GridConfig;
+  };
+}
 
 const configPromotions = [
   {
@@ -63,7 +98,7 @@ const configPromotions = [
   },
 ];
 
-const configProducts = [
+const configProducts: ProductConfig[] = [
   {
     name: "beon_default",
     config: {
@@ -361,19 +396,27 @@ window.addEventListener("DOMContentLoaded", (event) => {
               if (getStorage !== null) {
                 const allPromotions = JSON.parse(getStorage);
 
-                return allPromotions.find(
+                const getClickedItem = allPromotions.find(
                   (promotion: any) => promotion.localtion_id === buttonID
                 );
+                // Buscar pelo location_id trás o resultado correto
+                return {
+                  item: getClickedItem,
+                };
               }
             };
 
-            window.dataLayer.push({ ecommerce: null });
-            window.dataLayer.push({
-              event: "select_promotion",
-              ecommerce: {
-                items: getPromotionSelect(),
-              },
-            });
+            const { item } = getPromotionSelect();
+
+            if (item) {
+              window.dataLayer.push({ ecommerce: null });
+              window.dataLayer.push({
+                event: "select_promotion",
+                ecommerce: {
+                  items: item,
+                },
+              });
+            }
           });
         });
       }
@@ -422,3 +465,9 @@ window.addEventListener("DOMContentLoaded", (event) => {
     }, 2000);
   }
 });
+
+/**
+ * Para select_item utilizar a mesma lógica de select_promotion
+ *
+ * Criar fallback para itens não encontrados no storage, principalmente na página de produto e carrinho
+ */
