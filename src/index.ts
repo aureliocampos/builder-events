@@ -1,48 +1,12 @@
-import { IPromotion } from "./interface/Promotion.js";
 import "./proxy/index.js";
-import { formatId, formatPrice } from "./utils/utils.js";
 
+import { formatId, formatPrice, getPrices } from "./utils/utils";
 /**
  * Verifica se os itens do array1 existem no array2 e realiza a mesclagem das informações.
  * Substitui as propriedades "price" e "quantity" do objeto do array2 pelo objeto do array1, se o item existir.
  * @param config Array de objetos
  * @returns Array2 com as informações atualizadas
  */
-
-// Interfaces
-interface TitleConfig {
-  selector: string;
-}
-
-interface PricesConfig {
-  regularPrice: string;
-  specialPrice: string;
-  oldPrice: string;
-}
-
-interface ItemConfig {
-  sku: string;
-  name: string;
-  prices: PricesConfig;
-}
-
-interface GridConfig {
-  selector: string;
-  items: {
-    selector: string;
-    item: ItemConfig;
-  };
-}
-
-interface ProductConfig {
-  name: string;
-  config: {
-    allContainers: string;
-    title: TitleConfig;
-    grid: GridConfig;
-  };
-}
-
 const configPromotions = [
   {
     config: {
@@ -98,7 +62,7 @@ const configPromotions = [
   },
 ];
 
-const configProducts: ProductConfig[] = [
+const configProducts = [
   {
     name: "beon_default",
     config: {
@@ -241,7 +205,7 @@ const createPromotions = (config: any) => {
         promotion_id: formatId(name),
         creative_name: formatId(name),
         creative_slot: config.name,
-        localtion_id: location,
+        location_id: location,
       };
     });
 
@@ -283,34 +247,11 @@ const createViewItemList = (config: IConfigProduct) => {
 
           id = product.getAttribute("data-product-id") ?? "";
           return {
-            id: formatId(id).split("_")[0],
-          };
-        };
-        const getPrices = () => {
-          const getOldPrice = product.querySelector(prices.oldPrice);
-          const getSpecialPrice = product.querySelector(prices.specialPrice);
-          const getRegularPrice = product.querySelector(prices.regularPrice);
-
-          if (getOldPrice !== null && getSpecialPrice !== null) {
-            const getDiscount = () => {
-              const oldPrice = formatPrice(getOldPrice);
-              const newPrice = formatPrice(getSpecialPrice);
-
-              return Number(oldPrice - newPrice);
-            };
-            return {
-              price: formatPrice(getSpecialPrice),
-              discount: Number(getDiscount().toFixed(2)),
-            };
-          }
-
-          return {
-            price: formatPrice(getRegularPrice as Element),
-            discount: 0,
+            id: id.split("_")[0],
           };
         };
 
-        const { discount, price } = getPrices();
+        const { discount, price } = getPrices(product, prices);
         const { id } = getID();
 
         // Criar aqui o marcador de clique do produto, sempre que percorrer um produto
@@ -346,6 +287,15 @@ const createViewItemList = (config: IConfigProduct) => {
 
 // Inicio dos eventos DataLayer
 window.addEventListener("DOMContentLoaded", (event) => {
+  // Verifica se os items já existe no local storage
+  window.ga_products_item = localStorage.getItem("ga-products-item")
+    ? JSON.parse(localStorage.getItem("ga-products-item") as string)
+    : [];
+
+  window.ga_select_item = localStorage.getItem("ga-select-item")
+    ? JSON.parse(localStorage.getItem("ga-select-item") as string)
+    : [];
+
   if (event.isTrusted === true) {
     setTimeout(() => {
       /**=========================
@@ -397,7 +347,7 @@ window.addEventListener("DOMContentLoaded", (event) => {
                 const allPromotions = JSON.parse(getStorage);
 
                 const getClickedItem = allPromotions.find(
-                  (promotion: any) => promotion.localtion_id === buttonID
+                  (promotion: any) => promotion.location_id === buttonID
                 );
                 // Buscar pelo location_id trás o resultado correto
                 return {
@@ -406,7 +356,7 @@ window.addEventListener("DOMContentLoaded", (event) => {
               }
             };
 
-            const { item } = getPromotionSelect();
+            const { item }: any = getPromotionSelect();
 
             if (item) {
               window.dataLayer.push({ ecommerce: null });
@@ -429,6 +379,17 @@ window.addEventListener("DOMContentLoaded", (event) => {
         // Percorre apenas as configurações das listas "Beon"
         const allViewItemList = createViewItemList(configProducts[0].config);
 
+        const items = allViewItemList?.flatMap((list) => list.items);
+
+        if (items?.length) {
+          window.ga_products_item = [...items];
+
+          localStorage.setItem(
+            "ga-products-item",
+            JSON.stringify(window.ga_products_item)
+          );
+        }
+
         if (allViewItemList?.length) {
           allViewItemList.forEach(({ item_list_id, item_list_name, items }) => {
             window.dataLayer.push({ ecommerce: null });
@@ -439,15 +400,77 @@ window.addEventListener("DOMContentLoaded", (event) => {
                 item_list_name,
                 items,
               },
+            });
+          });
+        }
+
+        /**
+         * Evento GA: select_item
+         *
+         */
+        if (document.querySelectorAll("[ga-product-link]")) {
+          const buttons = document.querySelectorAll("[ga-product-link]");
+
+          buttons.forEach((button) => {
+            button.addEventListener("click", (event) => {
+              const buttonID = button.getAttribute("ga-product-link");
+
+              const getProductSelect = () => {
+                const getStorage = localStorage.getItem("ga-products-item");
+
+                if (getStorage !== null) {
+                  const allProducts = JSON.parse(getStorage);
+
+                  const getClickedItem = allProducts.find(
+                    (product: any) => formatId(product.item_name) === buttonID
+                  );
+
+                  // Buscar pelo location_id trás o resultado correto
+                  return {
+                    item: getClickedItem,
+                  };
+                }
+              };
+
+              const { item }: any = getProductSelect();
+
+              window.ga_select_item.push(item);
+
+              localStorage.setItem(
+                "ga-select-item",
+                JSON.stringify(window.ga_select_item)
+              );
+
+              if (item) {
+                window.dataLayer.push({ ecommerce: null });
+                window.dataLayer.push({
+                  event: "select_item",
+                  ecommerce: {
+                    items: item,
+                  },
+                });
+              }
             });
           });
         }
       }, 3500);
 
-      // Percorre apenas as configurações da lista padrão
+      // Eventos para a página de produto
       if (document.body.classList.contains("catalog-category-view")) {
-        const allViewItemList = createViewItemList(configProducts[1].config);
+        /**
+         * Evento GA: view_item
+         */
+        window.dataLayer.push({ ecommerce: null });
+        window.dataLayer.push({
+          event: "view_item",
+          ecommerce: {
+            items: window.ga_select_item[window.ga_select_item.length - 1],
+          },
+        });
 
+        //
+        // Percorre apenas as configurações da lista padrão
+        const allViewItemList = createViewItemList(configProducts[1].config);
         if (allViewItemList?.length) {
           allViewItemList.forEach(({ item_list_id, item_list_name, items }) => {
             window.dataLayer.push({ ecommerce: null });
@@ -460,7 +483,257 @@ window.addEventListener("DOMContentLoaded", (event) => {
               },
             });
           });
+          /**
+           * Evento GA: select_item
+           *
+           */
+          if (document.querySelectorAll("[ga-product-link]")) {
+            const buttons = document.querySelectorAll("[ga-product-link]");
+
+            buttons.forEach((button) => {
+              button.addEventListener("click", (event) => {
+                const buttonID = button.getAttribute("ga-product-link");
+
+                const getProductSelect = () => {
+                  const getStorage = localStorage.getItem("ga-products-item");
+
+                  if (getStorage !== null) {
+                    const allProducts = JSON.parse(getStorage);
+
+                    const getClickedItem = allProducts.find(
+                      (product: any) => formatId(product.item_name) === buttonID
+                    );
+
+                    // Buscar pelo location_id trás o resultado correto
+                    return {
+                      item: getClickedItem,
+                    };
+                  }
+                };
+
+                const { item }: any = getProductSelect();
+
+                window.ga_select_item.push(item);
+
+                localStorage.setItem(
+                  "ga-select-item",
+                  JSON.stringify(window.ga_select_item)
+                );
+
+                if (item) {
+                  window.dataLayer.push({ ecommerce: null });
+                  window.dataLayer.push({
+                    event: "select_item",
+                    ecommerce: {
+                      items: item,
+                    },
+                  });
+                }
+              });
+            });
+          }
         }
+        //
+        //
+      }
+
+      if (document.body.classList.contains("catalog-product-view")) {
+        // Eventos do produto
+
+        const buttonCart = document.querySelector(".btn-cart");
+
+        const configPageProductSelectors = {
+          selectorContainer: ".product-essential",
+          selectorName: ".product-name .h1",
+          selectorQuantity: "input#qty",
+          selectorPrices: {
+            regularPrice: ".regular-price .price",
+            specialPrice: ".special-price .price",
+            oldPrice: ".old-price .price",
+          },
+        };
+        buttonCart?.addEventListener("click", (event) => {
+          event.preventDefault();
+
+          const {
+            selectorQuantity,
+            selectorPrices,
+            selectorContainer,
+            selectorName,
+          } = configPageProductSelectors;
+
+          const product = document.querySelector(selectorContainer);
+
+          if (product) {
+            const name =
+              document.querySelector(selectorName)?.textContent ?? "";
+            const { discount, price } = getPrices(product, selectorPrices);
+            const quantity =
+              (document.querySelector(selectorQuantity) as HTMLInputElement)
+                ?.value ?? "";
+
+            const itemSelected = {
+              name,
+              discount,
+              price,
+              quantity: parseFloat(quantity),
+            };
+
+            const AllSelectedItems = JSON.parse(
+              localStorage.getItem("ga-select-item") ?? "[]"
+            );
+
+            const itemInfo = AllSelectedItems.filter(
+              (selected: any) => selected.item_name === itemSelected.name
+            );
+
+            if (itemInfo) {
+              const item = itemInfo[0];
+
+              window.dataLayer.push({ ecommerce: null });
+              window.dataLayer.push({
+                event: "add_to_cart",
+                ecommerce: {
+                  items: item,
+                },
+              });
+            }
+          }
+        });
+      }
+
+      if (document.body.classList.contains("checkout-cart-index")) {
+        const subtotal =
+          document.querySelector("#shopping-cart-totals-table tbody .price")
+            ?.textContent ?? "";
+        const removeButtons = document.querySelectorAll(".btn-remove");
+
+        const config = {
+          container: "#shopping-cart-table",
+          productItem: "tbody tr",
+          productName: ".product-name",
+          productSubtotal: ".product-cart-total .cart-price .price",
+          productQuantity: "input.qty",
+        };
+
+        /**
+         * Evento GA: View_cart
+         */
+
+        const getCartProducts = () => {
+          const container = document.querySelector(config.container);
+          const allProducts = container?.querySelectorAll(config.productItem);
+
+          if (allProducts) {
+            const cartProducts = Array.from(allProducts).map((product) => {
+              const { productName, productQuantity, productSubtotal } = config;
+
+              const getName =
+                product.querySelector(productName)?.textContent ?? "";
+
+              const getSubtotal = formatPrice(
+                product.querySelector(productSubtotal) as Element
+              );
+              const getQuantity =
+                (product.querySelector(productQuantity) as HTMLInputElement)
+                  .value ?? "";
+
+              return {
+                name: getName.trim(),
+                subtotal: getSubtotal,
+                quantity: parseFloat(getQuantity),
+              };
+            });
+
+            return cartProducts;
+          }
+        };
+        const updateItems = () => {
+          const AllSelectedItems = JSON.parse(
+            localStorage.getItem("ga-select-item") ?? "[]"
+          );
+
+          const cartItems = getCartProducts();
+          const names = cartItems?.flatMap((item) => item.name);
+          let alreadyUpdated: string[] = [];
+
+          const mergeItems: [] = AllSelectedItems.filter((item: IProduct) => {
+            if (alreadyUpdated.includes(item.item_name)) {
+              return;
+            }
+
+            if (!names?.includes(item.item_name)) {
+              return;
+            }
+
+            const updateItem = cartItems?.find(
+              (cartItem) => cartItem.name === item.item_name
+            );
+
+            alreadyUpdated.push(updateItem?.name ?? "");
+
+            const updateItemPrice = () => (item.price = updateItem?.subtotal);
+            const updateItemQuantity = () =>
+              (item.quantity = updateItem?.quantity);
+
+            return {
+              ...item,
+              price: updateItemPrice(),
+              quantity: updateItemQuantity(),
+            };
+          });
+
+          return mergeItems;
+        };
+
+        window.ga_pre_checkout = updateItems();
+
+        if (window.ga_pre_checkout) {
+          window.dataLayer.push({ ecommerce: null });
+          window.dataLayer.push({
+            event: "view_cart",
+            current: "",
+            value: "",
+            ecommerce: {
+              items: window.ga_pre_checkout,
+            },
+          });
+        }
+
+        /**
+         * Evento GA: remove_from_cart
+         */
+
+        Array.from(removeButtons).forEach((button) => {
+          button.addEventListener("click", (event) => {
+            const product = button.closest(config.productItem);
+            const getName =
+              product?.querySelector(config.productName)?.textContent ?? "";
+            const removeName = getName.trim();
+
+            const itemRemoved = window.ga_pre_checkout.filter(
+              (item: IProduct, index: number) => {
+                if (item.item_name === removeName) {
+                  window.ga_pre_checkout.splice(index, 1);
+
+                  return item;
+                }
+              }
+            );
+
+            window.dataLayer.push({ ecommerce: null });
+            window.dataLayer.push({
+              event: "remove_from_cart",
+              ecommerce: {
+                items: itemRemoved,
+              },
+            });
+          });
+        });
+
+        /**
+         * Evento GA: add_to_cart and remove_from_Cart
+         */
       }
     }, 2000);
   }

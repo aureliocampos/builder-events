@@ -1,4 +1,4 @@
-import { IProduct } from "../interface/Products";
+import { IProduct } from "../interfaces/Products";
 
 declare global {
   interface Window {
@@ -7,6 +7,7 @@ declare global {
     ga_pre_checkout: Array<string, any>;
     ga_select_item: Array<string, any>;
     ga_promotions_item: Array<string, any>;
+    ga_products_item: Array<string, any>;
   }
 }
 
